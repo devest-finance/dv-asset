@@ -1,5 +1,5 @@
 {
-  "name": "dv-token",
+  "name": "dv-asset",
   "version": "1.0.0",
   "description": "",
   "main": "truffle-config.js",
@@ -11,14 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devest-finance/dv-token.git"
+    "url": "git+https://github.com/devest-finance/dv-asset.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/devest-finance/dv-token/issues"
+    "url": "https://github.com/devest-finance/dv-asset/issues"
   },
-  "homepage": "https://github.com/devest-finance/dv-token#readme",
+  "homepage": "https://github.com/devest-finance/dv-asset#readme",
   "dependencies": {
     "@devest/contracts": "^1.0.0",
     "@openzeppelin/contracts": "^4.8.3",
