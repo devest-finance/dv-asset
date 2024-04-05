@@ -73,7 +73,7 @@ The DvAsset contract provides various functions for managing digital tickets. He
 - Offer for sale: Offer a digital ticket for sale at a specified price using the `offer` function.
 - Cancel offer: Cancel an existing offer for a digital ticket using the `cancel` function.
 
-Refer to the [contract documentation](httos://docs.devest.finance/) for detailed usage instructions and function descriptions.
+Refer to the [contract documentation](https://docs.devest.finance/) for detailed usage instructions and function descriptions.
 
 ## License
 
