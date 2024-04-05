@@ -1,0 +1,33 @@
+{
+  "name": "dv-token",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "truffle test --debug"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devest-finance/dv-token.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/devest-finance/dv-token/issues"
+  },
+  "homepage": "https://github.com/devest-finance/dv-token#readme",
+  "dependencies": {
+    "@devest/contracts": "^1.0.0",
+    "@openzeppelin/contracts": "^4.8.3",
+    "@openzeppelin/test-helpers": "^0.5.16",
+    "@truffle/hdwallet-provider": "^2.1.9",
+    "bintrees": "^1.0.2",
+    "ganache": "^7.8.0",
+    "num": "^0.3.0",
+    "truffle-contract-size": "^2.0.1",
+    "web3": "^1.9.0"
+  }
+}
