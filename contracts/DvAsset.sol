@@ -39,7 +39,10 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     mapping(address => uint256) private _balances;
 
     // Mapping from owner to list of owned token IDs
-    mapping(address => uint256[]) private _ownedTokens;
+    mapping(address => uint256[]) private _ownedTickets;
+
+    // Mapping from token ID to index of the owner tokens list
+    mapping(uint256 => uint256) private _ownedTicketsIndex;
 
     // for trading
     struct Offer {
@@ -141,6 +144,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
 
         _tickets[ticketId] = _msgSender();
         _balances[_msgSender()] += 1;
+        addToOwnedTickets(_msgSender(), ticketId);
 
         emit purchased(_msgSender(), ticketId);
     }
@@ -185,6 +189,36 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         emit canceled(_msgSender(), ticketId);
     }
 
+    function tokenOfOwnerByIndex(address owner, uint256 index) public view virtual returns (uint256) {
+        require(index < balanceOf(owner), "ERC721Enumerable: owner index out of bounds");
+        return _ownedTickets[owner][index];
+    }
+
+    function addToOwnedTickets(address to, uint256 ticketId) internal virtual {
+        // Map tokenId to owner
+        uint256 length = balanceOf(to);
+        _ownedTickets[to][length] = ticketId;
+        _ownedTicketsIndex[ticketId] = length;
+    }
+
+    function removeFromOwnedTokens(address from, uint256 ticketId) internal virtual {
+        uint256 lastTicketIndex = balanceOf(from) - 1;
+        uint256 ticketIndex = _ownedTicketsIndex[ticketId];
+
+        // When the token to delete is the last token, the swap operation is unnecessary
+        if (ticketIndex != lastTicketIndex) {
+            uint256 lastTicketId = _ownedTickets[from][lastTicketIndex];
+
+            _ownedTickets[from][ticketIndex] = lastTicketId; // Move the last token to the slot of the to-delete token
+            _ownedTicketsIndex[lastTicketId] = ticketIndex; // Update the moved token's index
+        }
+
+        // This also deletes the contents at the last position of the array
+        delete _ownedTicketsIndex[ticketId];
+        delete _ownedTickets[from][lastTicketIndex];
+    }
+
+
     /**
     * @dev Returns the Uniform Resource Identifier (URI) for `tokenId` token.
      */
@@ -198,20 +232,24 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     function supportsInterface(bytes4 interfaceId) external pure returns (bool){
         return interfaceId == type(IERC721).interfaceId || interfaceId == type(IERC721Metadata).interfaceId;
     }
+    /**
+     * @dev See {IERC721Metadata-name}.
+     */
+    function name() external view returns (string memory) {
+        return _name;
+    }
+    /**
+     * @dev See {IERC721Metadata-symbol}.
+     */
+    function symbol() external view returns (string memory) {
+        return _symbol;
+    }
 
     function approve(address to, uint256 tokenId) external {}
 
     function getApproved(uint256 tokenId) external view returns (address operator) {}
 
     function isApprovedForAll(address owner, address operator) external view returns (bool) {}
-
-    function name() external view returns (string memory) {
-        return _name;
-    }
-
-    function symbol() external view returns (string memory) {
-        return _symbol;
-    }
 
     function safeTransferFrom(address from, address to, uint256 tokenId) external {}
 

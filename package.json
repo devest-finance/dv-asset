@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "truffle test --debug"
+    "test": "npx hardhat test",
+    "build": "mkdir -p npm; cp -r ./contracts/* ./npm; cp package.json ./npm/package.json"
   },
   "repository": {
     "type": "git",
