@@ -53,7 +53,7 @@ Run the provided test suite to ensure your smart contract functions as expected:
 npx hardhat test
 ```
 
-### Installing as an npm Package
+### 📦 Installing as an npm Package
 
 Alternatively, you can install DvAsset as an npm package in your project. This method is convenient for integrating DvAsset into your application without manually managing the contract files.
 
