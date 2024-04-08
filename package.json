@@ -1,5 +1,5 @@
 {
-  "name": "dv-token",
+  "name": "dv-asset",
   "version": "1.0.0",
   "description": "",
   "main": "truffle-config.js",
@@ -11,23 +11,25 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devest-finance/dv-token.git"
+    "url": "git+https://github.com/devest-finance/dv-asset.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/devest-finance/dv-token/issues"
+    "url": "https://github.com/devest-finance/dv-asset/issues"
   },
-  "homepage": "https://github.com/devest-finance/dv-token#readme",
+  "homepage": "https://github.com/devest-finance/dv-asset#readme",
   "dependencies": {
-    "@devest/contracts": "^1.0.0",
+    "@devest/contracts": "^1.2.2",
     "@openzeppelin/contracts": "^4.8.3",
     "@openzeppelin/test-helpers": "^0.5.16",
-    "@truffle/hdwallet-provider": "^2.1.9",
     "bintrees": "^1.0.2",
-    "ganache": "^7.8.0",
     "num": "^0.3.0",
-    "truffle-contract-size": "^2.0.1",
-    "web3": "^1.9.0"
+    "web3": "^4.7.0"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "hardhat": "^2.22.2"
   }
 }

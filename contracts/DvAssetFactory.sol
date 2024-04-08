@@ -43,7 +43,7 @@ contract DvAssetFactory is Context {
             payable(_feeRecipient).transfer(_issueFee);
 
         // issue token
-        DvAsset ticket = new DvTicket(tradingTokenAddress, name, symbol, tokenURI, address(this), _msgSender());
+        DvAsset ticket = new DvAsset(tradingTokenAddress, name, symbol, tokenURI, address(this), _msgSender());
 
         emit deployed(_msgSender(), address(ticket));
         return address(ticket);

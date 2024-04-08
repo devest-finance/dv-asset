@@ -156,11 +156,16 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         emit offered(_msgSender(), ticketId, _price);
     }
 
-
+    /**
+     * @dev Returns whether the specified token is for sale
+     */
     function isForSale(uint256 ticketId) public view returns (bool) {
         return _market[ticketId].owner != address(0) || ownerOf(ticketId) == address(0);
     }
 
+    /**
+     * @dev Returns the price of the specified token
+     */
     function priceOf(uint256 ticketId) public view returns (uint256) {
         return _market[ticketId].price;
     }
@@ -180,7 +185,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     /**
     * @dev Returns the Uniform Resource Identifier (URI) for `tokenId` token.
      */
-    function tokenURI(uint256 /*tokenId*/) external view returns (string memory){
+    function tokenURI(uint256 tokenId) external view returns (string memory){
         return _tokenURI;
     }
 
@@ -190,5 +195,27 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     function supportsInterface(bytes4 interfaceId) external pure returns (bool){
         return interfaceId == type(IERC721).interfaceId || interfaceId == type(IERC721Metadata).interfaceId;
     }
+
+    function approve(address to, uint256 tokenId) external {}
+
+    function getApproved(uint256 tokenId) external view returns (address operator) {}
+
+    function isApprovedForAll(address owner, address operator) external view returns (bool) {}
+
+    function name() external view returns (string memory) {
+        return _name;
+    }
+
+    function symbol() external view returns (string memory) {
+        return _symbol;
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId) external {}
+
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external {}
+
+    function setApprovalForAll(address operator, bool approved) external {}
+
+    function transferFrom(address from, address to, uint256 tokenId) external {}
 
 }
