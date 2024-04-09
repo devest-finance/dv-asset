@@ -133,7 +133,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         // assigned ticket to buyer
         totalPurchased++;
 
-        _tickets[ticketId] = _msgSender();
+        _tickets[totalPurs] = _msgSender();
         _balances[_msgSender()] += 1;
         addToOwnedTickets(_msgSender(), ticketId);
 
@@ -169,11 +169,11 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
                 preSale = false;
         }
 
-        _tickets[ticketId] = _msgSender();
+        _tickets[totalPurchased] = _msgSender();
         _balances[_msgSender()] += 1;
-        addToOwnedTickets(_msgSender(), ticketId);
+        addToOwnedTickets(_msgSender(), totalPurchased);
 
-        emit purchased(_msgSender(), ticketId);
+        emit purchased(_msgSender(), totalPurchased);
     }
 
     /**
