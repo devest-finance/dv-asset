@@ -3,12 +3,11 @@ pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@devest/contracts/DeVest.sol";
 import "@devest/contracts/VestingToken.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
-
 /**
  * @title DvAsset Contract
  * @author [Don Miguel] (DeVest 2025)
@@ -31,6 +30,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     // --- State
     bool public preSale = true;             // while presale is active, tickets cannot be offered for sale
     bool public tradable = false;           // while tradable is active, tickets can be traded
+    bool public direct = false;             // while direct is active, tickets can be purchased directly at a set price, deactivates presale
 
     // Mapping of ticket IDs to owner addresses
     mapping(uint256 => address) private _tickets;
@@ -49,6 +49,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         address owner;
         uint256 price;
     }
+
     mapping(uint256 => Offer) private _market; // mapping of tickets to their owners
 
     // Properties
@@ -60,21 +61,23 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     constructor(address _tokenAddress, string memory __name, string memory __symbol, string memory __tokenURI, address _factory, address _owner)
     DeVest(_owner, _factory) VestingToken(_tokenAddress) {
 
-        _symbol =  __symbol;
         _name = __name;
+        _symbol = __symbol;
         _tokenURI = __tokenURI;
     }
 
     /**
      *  Initialize TST as tangible
      */
-    function initialize(uint tax, uint256 _totalSupply, uint256 _price, bool _tradable) public onlyOwner nonReentrant virtual{
+    function initialize(uint tax, uint256 _totalSupply, uint256 _price, bool _tradable, bool _direct) public onlyOwner nonReentrant virtual {
         require(tax >= 0 && tax <= 1000, 'Invalid tax value');
         require(totalSupply >= 0 && totalSupply <= 10000, 'Max 10 decimals');
 
         totalSupply = _totalSupply;
         price = _price;
         tradable = _tradable;
+        direct = _direct;
+        preSale != _direct;
 
         // set attributes
         _setRoyalties(tax, owner());
@@ -115,14 +118,37 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         emit transferred(_msgSender(), to, ticketId);
     }
 
+    /**
+     *  Purchase and mint asset directly
+     */
+    function issue(uint256 ticketId, uint256 _price) external virtual payable takeFee {
+        require(direct == true, "Direct purchase is disabled");
+        require(preSale == false, "Presale is active");
+        require(tradable == false, "Trading is enabled");
+        require(_msgSender() != ownerOf(ticketId), "You already own this ticket");
+
+        __allowance(_msgSender(), _price);
+        __transferFrom(_msgSender(), owner(), _price);
+
+        // assigned ticket to buyer
+        totalPurchased++;
+
+        _tickets[ticketId] = _msgSender();
+        _balances[_msgSender()] += 1;
+        addToOwnedTickets(_msgSender(), ticketId);
+
+        emit purchased(_msgSender(), ticketId);
+    }
+
     // Purchase ticket
     function purchase(uint256 ticketId) external payable takeFee {
+        require(direct == false, "Direct purchase is enabled");
         require(ticketId < totalSupply, "Ticket sold out");
         require(_msgSender() != ownerOf(ticketId), "You already own this ticket");
         require(isForSale(ticketId), "Ticket not for sale");
 
         // check if its original ticket or ticket offered for sale
-        if(_market[ticketId].owner != address(0)){
+        if (_market[ticketId].owner != address(0)) {
             __allowance(_msgSender(), _market[ticketId].price);
             __transferFrom(_msgSender(), _market[ticketId].owner, _market[ticketId].price);
 
@@ -135,6 +161,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
             require(address(0) == ownerOf(ticketId), "Ticket not available");
             __allowance(_msgSender(), price);
             __transferFrom(_msgSender(), owner(), price);
+            removeFromOwnedTokens(owner(), ticketId);
             // assigned ticket to buyer
             totalPurchased++;
             // cancel preSale if all tickets are sold
@@ -148,12 +175,14 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
 
         emit purchased(_msgSender(), ticketId);
     }
+
     /**
      *  Offer ticket for sales
      */
     function offer(uint256 ticketId, uint256 _price) public payable takeFee {
         require(preSale == false, "Presale is active");
         require(tradable == true, "Trading is disabled");
+        require(direct == false, "Direct purchase is enabled");
         require(ownerOf(ticketId) == _msgSender(), "You don't own this ticket");
         require(_price > 0, "Price must be greater than zero");
         require(isForSale(ticketId) == false, "Already for sale");
@@ -189,11 +218,17 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         emit canceled(_msgSender(), ticketId);
     }
 
+    /**
+        * @dev See {IERC721Enumerable-tokenOfOwnerByIndex}.
+     */
     function tokenOfOwnerByIndex(address owner, uint256 index) public view virtual returns (uint256) {
         require(index < balanceOf(owner), "ERC721Enumerable: owner index out of bounds");
         return _ownedTickets[owner][index];
     }
 
+    /**
+     * @dev Adding a ticket to the list of owned tickets
+     */
     function addToOwnedTickets(address to, uint256 ticketId) internal virtual {
         // Map tokenId to owner
         uint256 length = balanceOf(to);
@@ -201,6 +236,9 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         _ownedTicketsIndex[ticketId] = length;
     }
 
+    /**
+     * @dev Removing a ticket from the list of owned tickets
+     */
     function removeFromOwnedTokens(address from, uint256 ticketId) internal virtual {
         uint256 lastTicketIndex = balanceOf(from) - 1;
         uint256 ticketIndex = _ownedTicketsIndex[ticketId];
@@ -218,11 +256,27 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         delete _ownedTickets[from][lastTicketIndex];
     }
 
+    /**
+     * @dev See {IERC721Metadata-name}.
+     */
+    function name() external view returns (string memory) {
+        return _name;
+    }
+
+    /**
+     * @dev See {IERC721Metadata-symbol}.
+     */
+    function symbol() external view returns (string memory) {
+        return _symbol;
+    }
 
     /**
     * @dev Returns the Uniform Resource Identifier (URI) for `tokenId` token.
      */
-    function tokenURI(uint256 tokenId) external view returns (string memory){
+    function tokenURI(uint256 tokenId) external view returns (string memory) {
+        if (direct) {
+            return string(abi.encodePacked(_tokenURI, "/", tokenId));
+        }
         return _tokenURI;
     }
 
@@ -231,18 +285,6 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
      */
     function supportsInterface(bytes4 interfaceId) external pure returns (bool){
         return interfaceId == type(IERC721).interfaceId || interfaceId == type(IERC721Metadata).interfaceId;
-    }
-    /**
-     * @dev See {IERC721Metadata-name}.
-     */
-    function name() external view returns (string memory) {
-        return _name;
-    }
-    /**
-     * @dev See {IERC721Metadata-symbol}.
-     */
-    function symbol() external view returns (string memory) {
-        return _symbol;
     }
 
     function approve(address to, uint256 tokenId) external {}
