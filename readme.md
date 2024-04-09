@@ -1,13 +1,13 @@
 # 📜 DvAsset Smart Contract
 
 ## 🌟 Overview
-**DvAsset** is a Solidity smart contract developed to manage the lifecycle of digital tickets for tangible goods on the Ethereum blockchain. It integrates functionalities provided by the **DeVest** and **VestingToken** contracts from the DeVest library, enabling secure and efficient management of digital ticket ownership and sales.
+**DvAsset** is a Solidity smart contract developed for managing digital assets on EVM (Ethereum Virtual Machine) compatible blockchains. By integrating functionalities from the **DeVest** and **VestingToken** contracts within the DeVest library, DvAsset offers secure and efficient management of unique digital assets such as collectibles, tickets, and more.
 
 ## ✨ Features
-- **Purchase Digital Tickets 🎟️**: Securely buy digital tickets representing ownership of tangible goods.
-- **Transfer Ownership 🔁**: Effortlessly transfer digital tickets to other Ethereum addresses.
-- **Offer for Sale 💰**: List owned digital tickets for sale at specified prices.
-- **Cancel Offers ❌**: Easily cancel any existing offers for digital tickets.
+- **Purchase Digital Assets 🎟️**: Securely acquire digital assets representing ownership over tangible goods.
+- **Transfer Ownership 🔁**: Seamlessly transfer digital assets across Ethereum addresses.
+- **Offer for Sale 💰**: List owned digital assets for sale at specified prices.
+- **Cancel Offers ❌**: Easily cancel any existing offers for digital assets.
 - **ERC721 Compliance 🧩**: Supports ERC721 and ERC721Metadata interfaces for maximum compatibility.
 
 ## 🛠 Dependencies
@@ -18,7 +18,6 @@ This contract relies on several key external dependencies:
 
 ## 🚀 Getting Started
 To begin using the DvAsset smart contracts in your projects, you have two primary options: cloning the repository or installing it directly as an npm package. Choose the method that best suits your project's needs.
-
 
 ### Prerequisites
 - An Ethereum wallet loaded with Ether for contract deployment and transactions.
@@ -73,10 +72,10 @@ import "@devest/dv-asset/DvAsset.sol";
 
 ## 🖥 Usage
 
-- **Purchasing Tickets**: Use the `purchase` function to buy a digital ticket.
-- **Transferring Tickets**: Transfer ticket ownership with the `transfer` function.
-- **Offering Tickets for Sale**: List tickets on the market using the `offer` function.
-- **Cancelling Sales Offers**: Withdraw tickets from the market with the `cancel` function.
+- **Purchasing Tickets**: Use the `purchase` function for asset acquisition.
+- **Transferring Tickets**: Transfer ownership with the `transfer` function.
+- **Offering Tickets for Sale**: Use the `offer` function to list assets in the marketplace.
+- **Cancelling Sales Offers**: Use the `cancel` function to retract assets from sale.
 
 Refer to the smart contract code for detailed function descriptions and further usage examples.
 
