@@ -133,7 +133,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         // assigned ticket to buyer
         totalPurchased++;
 
-        _tickets[totalPurs] = _msgSender();
+        _tickets[totalPurchased] = _msgSender();
         _balances[_msgSender()] += 1;
         addToOwnedTickets(_msgSender(), ticketId);
 

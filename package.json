@@ -1,6 +1,6 @@
 {
   "name": "@devest/dv-asset",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "",
   "main": "contracts/DvAsset.sol",
   "directories": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "npx hardhat test",
-    "build": "mkdir -p npm; cp -r ./contracts/* ./npm; cp package.json ./npm/package.json; cp readme.md .npm/readme.md"
+    "build": "mkdir -p npm; cp -r ./contracts/* ./npm; cp package.json ./npm/package.json; cp readme.md ./npm/readme.md"
   },
   "repository": {
     "type": "git",
