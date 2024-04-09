@@ -121,7 +121,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     /**
      *  Purchase and mint asset directly
      */
-    function issue(uint256 ticketId, uint256 _price) external virtual payable takeFee {
+    function issue(uint256 ticketId, uint256 _price) internal virtual payable takeFee {
         require(direct == true, "Direct purchase is disabled");
         require(preSale == false, "Presale is active");
         require(tradable == false, "Trading is enabled");
