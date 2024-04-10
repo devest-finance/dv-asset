@@ -11,38 +11,41 @@ import "@devest/contracts/VestingToken.sol";
 /**
  * @title DvAsset Contract
  * @author [Don Miguel] (DeVest 2025)
- * @notice This contract manages the lifecycle of digital tickets for a tangible good.
+ * @notice This contract manages the lifecycle of digital assets for a tangible good.
  *         It leverages the DeVest and VestingToken contracts from the DeVest library.
  */
 contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IERC721Metadata {
 
     // Events emitted by the contract
-    event purchased(address indexed customer, uint256 indexed ticketId);
-    event transferred(address indexed sender, address indexed reciver, uint256 indexed ticketId);
-    event offered(address indexed owner, uint256 indexed ticketId, uint256 price);
-    event canceled(address indexed owner, uint256 indexed ticketId);
+    event purchased(address indexed customer, uint256 indexed assetId);
+    event transferred(address indexed sender, address indexed reciver, uint256 indexed assetId);
+    event offered(address indexed owner, uint256 indexed assetId, uint256 price);
+    event canceled(address indexed owner, uint256 indexed assetId);
 
     // ---
-    uint256 public price;                   // current price of ticket (smallest offered)
-    uint256 public totalSupply;             // total supply of tickets
-    uint256 public totalPurchased = 0;      // total tickets purchased
+    uint256 public price;                   // current price of asset (smallest offered)
+    uint256 public totalSupply;             // total supply of assets
+    uint256 public totalPurchased = 0;      // total assets purchased
 
     // --- State
-    bool public preSale = true;             // while presale is active, tickets cannot be offered for sale
-    bool public tradable = false;           // while tradable is active, tickets can be traded
-    bool public direct = false;             // while direct is active, tickets can be purchased directly at a set price, deactivates presale
+    bool public preSale = true;             // while presale is active, assets cannot be offered for sale
+    bool public tradable = false;           // while tradable is active, assets can be traded
+    bool public direct = false;             // while direct is active, assets can be purchased directly at a set price, deactivates presale
 
-    // Mapping of ticket IDs to owner addresses
-    mapping(uint256 => address) private _tickets;
+    // Mapping of asset IDs to owner addresses
+    mapping(uint256 => address) private _assets;
 
     // Mapping of owner addresses to token count
     mapping(address => uint256) private _balances;
 
-    // Mapping from owner to list of owned token IDs
-    mapping(address => uint256[]) private _ownedTickets;
+    // Mapping from owner to list of owned token IDs for enumeration
+    mapping(address => mapping(uint256 => uint256)) private _ownedAssets;
 
-    // Mapping from token ID to index of the owner tokens list
-    mapping(uint256 => uint256) private _ownedTicketsIndex;
+    // Mapping from token ID to index in the owner's list of tokens
+    mapping(uint256 => uint256) private _ownedAssetsIndex;
+
+    // Mapping from referenceId to owner
+    mapping(string => address) private ownerByExternalReferenceId;
 
     // for trading
     struct Offer {
@@ -50,7 +53,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         uint256 price;
     }
 
-    mapping(uint256 => Offer) private _market; // mapping of tickets to their owners
+    mapping(uint256 => Offer) private _market; // mapping of assets to their owners
 
     // Properties
     string internal _name;              // name of the tangible
@@ -77,7 +80,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         price = _price;
         tradable = _tradable;
         direct = _direct;
-        preSale != _direct;
+        preSale = !_direct;
 
         // set attributes
         _setRoyalties(tax, owner());
@@ -88,8 +91,8 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     /**
      * @dev See {IERC721-balanceOf}.
      */
-    function ownerOf(uint256 tokenId) public view returns (address owner) {
-        return _tickets[tokenId];
+    function ownerOf(uint256 assetId) public view returns (address owner) {
+        return _assets[assetId];
     }
 
     /**
@@ -101,121 +104,121 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     }
 
     /**
-     * Transfer ticket via ERC721 or ERC21 standard
+     * Transfer asset via ERC721 or ERC21 standard
      */
-    function transfer(address to, uint256 ticketId) external payable takeFee {
-        require(_msgSender() == ownerOf(ticketId), "Transfer caller is not owner");
+    function transfer(address to, uint256 assetId) external payable takeFee {
+        require(_msgSender() == ownerOf(assetId), "Transfer caller is not owner");
         require(to != address(0), "Transfer to the zero address");
 
-        // cancel offer if ticket is offered for sale
-        if (isForSale(ticketId))
-            _market[ticketId] = Offer(address(0), 0);
+        // cancel offer if asset is offered for sale
+        if (isForSale(assetId))
+            _market[assetId] = Offer(address(0), 0);
 
-        _tickets[ticketId] = to;
+        _assets[assetId] = to;
         _balances[_msgSender()] -= 1;
         _balances[to] += 1;
 
-        emit transferred(_msgSender(), to, ticketId);
+        emit transferred(_msgSender(), to, assetId);
     }
 
     /**
      *  Purchase and mint asset directly
      */
-    function issue(uint256 ticketId, uint256 _price) internal virtual payable takeFee {
+    function issue(string memory referenceId, uint256 _price) external payable takeFee {
         require(direct == true, "Direct purchase is disabled");
         require(preSale == false, "Presale is active");
         require(tradable == false, "Trading is enabled");
-        require(_msgSender() != ownerOf(ticketId), "You already own this ticket");
+        require(_msgSender() != ownerOf(totalPurchased + 1), "You already own this asset");
 
         __allowance(_msgSender(), _price);
         __transferFrom(_msgSender(), owner(), _price);
 
-        // assigned ticket to buyer
+        // assigned asset to buyer
         totalPurchased++;
+        addToOwnedAssets(_msgSender(), totalPurchased);
 
-        _tickets[totalPurchased] = _msgSender();
+        _assets[totalPurchased] = _msgSender();
         _balances[_msgSender()] += 1;
-        addToOwnedTickets(_msgSender(), ticketId);
-
-        emit purchased(_msgSender(), ticketId);
-    }
-
-    // Purchase ticket
-    function purchase(uint256 ticketId) external payable takeFee {
-        require(direct == false, "Direct purchase is enabled");
-        require(ticketId < totalSupply, "Ticket sold out");
-        require(_msgSender() != ownerOf(ticketId), "You already own this ticket");
-        require(isForSale(ticketId), "Ticket not for sale");
-
-        // check if its original ticket or ticket offered for sale
-        if (_market[ticketId].owner != address(0)) {
-            __allowance(_msgSender(), _market[ticketId].price);
-            __transferFrom(_msgSender(), _market[ticketId].owner, _market[ticketId].price);
-
-            // remove ticket from seller
-            _balances[_market[ticketId].owner] -= 1;
-
-            // reset ticket offer
-            _market[ticketId] = Offer(address(0), 0);
-        } else {
-            require(address(0) == ownerOf(ticketId), "Ticket not available");
-            __allowance(_msgSender(), price);
-            __transferFrom(_msgSender(), owner(), price);
-            removeFromOwnedTokens(owner(), ticketId);
-            // assigned ticket to buyer
-            totalPurchased++;
-            // cancel preSale if all tickets are sold
-            if (totalPurchased == totalSupply)
-                preSale = false;
-        }
-
-        _tickets[totalPurchased] = _msgSender();
-        _balances[_msgSender()] += 1;
-        addToOwnedTickets(_msgSender(), totalPurchased);
+        ownerByExternalReferenceId[referenceId] = _msgSender();
 
         emit purchased(_msgSender(), totalPurchased);
     }
 
+    // Purchase asset
+    function purchase(uint256 assetId) external payable takeFee {
+        require(direct == false, "Direct purchase is enabled");
+        require(assetId < totalSupply, "Asset sold out");
+        require(_msgSender() != ownerOf(assetId), "You already own this asset");
+        require(isForSale(assetId), "Asset not for sale");
+
+        // check if its original asset or asset offered for sale
+        if (_market[assetId].owner != address(0)) {
+            __allowance(_msgSender(), _market[assetId].price);
+            __transferFrom(_msgSender(), _market[assetId].owner, _market[assetId].price);
+
+            // remove asset from seller
+            removeFromOwnedTokens(_market[assetId].owner, assetId);
+            _balances[_market[assetId].owner] -= 1;
+
+            // reset asset offer
+            _market[assetId] = Offer(address(0), 0);
+        } else {
+            require(address(0) == ownerOf(assetId), "Asset not available");
+            __allowance(_msgSender(), price);
+            __transferFrom(_msgSender(), owner(), price);
+            // assigned asset to buyer
+            totalPurchased++;
+            // cancel preSale if all assets are sold
+            if (totalPurchased == totalSupply)
+                preSale = false;
+        }
+        addToOwnedAssets(_msgSender(), assetId);
+        _assets[assetId] = _msgSender();
+        _balances[_msgSender()] += 1;
+
+        emit purchased(_msgSender(), assetId);
+    }
+
     /**
-     *  Offer ticket for sales
+     *  Offer asset for sales
      */
-    function offer(uint256 ticketId, uint256 _price) public payable takeFee {
+    function offer(uint256 assetId, uint256 _price) public payable takeFee {
         require(preSale == false, "Presale is active");
         require(tradable == true, "Trading is disabled");
         require(direct == false, "Direct purchase is enabled");
-        require(ownerOf(ticketId) == _msgSender(), "You don't own this ticket");
+        require(ownerOf(assetId) == _msgSender(), "You don't own this asset");
         require(_price > 0, "Price must be greater than zero");
-        require(isForSale(ticketId) == false, "Already for sale");
+        require(isForSale(assetId) == false, "Already for sale");
 
-        _market[ticketId] = Offer(_msgSender(), _price);
+        _market[assetId] = Offer(_msgSender(), _price);
 
-        emit offered(_msgSender(), ticketId, _price);
+        emit offered(_msgSender(), assetId, _price);
     }
 
     /**
      * @dev Returns whether the specified token is for sale
      */
-    function isForSale(uint256 ticketId) public view returns (bool) {
-        return _market[ticketId].owner != address(0) || ownerOf(ticketId) == address(0);
+    function isForSale(uint256 assetId) public view returns (bool) {
+        return _market[assetId].owner != address(0) || ownerOf(assetId) == address(0);
     }
 
     /**
      * @dev Returns the price of the specified token
      */
-    function priceOf(uint256 ticketId) public view returns (uint256) {
-        return _market[ticketId].price;
+    function priceOf(uint256 assetId) public view returns (uint256) {
+        return _market[assetId].price;
     }
 
     /**
-     *  Cancel ticket offer
+     *  Cancel asset offer
      */
-    function cancel(uint256 ticketId) public payable takeFee {
-        require(ownerOf(ticketId) == _msgSender(), "You don't own this ticket");
-        require(isForSale(ticketId), "Ticket not for sale");
+    function cancel(uint256 assetId) public payable takeFee {
+        require(ownerOf(assetId) == _msgSender(), "You don't own this asset");
+        require(isForSale(assetId), "Asset not for sale");
 
-        _market[ticketId] = Offer(address(0), 0);
+        _market[assetId] = Offer(address(0), 0);
 
-        emit canceled(_msgSender(), ticketId);
+        emit canceled(_msgSender(), assetId);
     }
 
     /**
@@ -223,37 +226,37 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
      */
     function tokenOfOwnerByIndex(address owner, uint256 index) public view virtual returns (uint256) {
         require(index < balanceOf(owner), "ERC721Enumerable: owner index out of bounds");
-        return _ownedTickets[owner][index];
+        return _ownedAssets[owner][index];
     }
 
     /**
-     * @dev Adding a ticket to the list of owned tickets
+     * @dev Adding a asset to the list of owned assets
      */
-    function addToOwnedTickets(address to, uint256 ticketId) internal virtual {
+    function addToOwnedAssets(address to, uint256 assetId) internal virtual {
         // Map tokenId to owner
         uint256 length = balanceOf(to);
-        _ownedTickets[to][length] = ticketId;
-        _ownedTicketsIndex[ticketId] = length;
+        _ownedAssets[to][length] = assetId;
+        _ownedAssetsIndex[assetId] = length;
     }
 
     /**
-     * @dev Removing a ticket from the list of owned tickets
+     * @dev Removing a asset from the list of owned assets
      */
-    function removeFromOwnedTokens(address from, uint256 ticketId) internal virtual {
-        uint256 lastTicketIndex = balanceOf(from) - 1;
-        uint256 ticketIndex = _ownedTicketsIndex[ticketId];
+    function removeFromOwnedTokens(address from, uint256 assetId) internal virtual {
+        uint256 lastAssetIndex = balanceOf(from) - 1;
+        uint256 assetIndex = _ownedAssetsIndex[assetId];
 
         // When the token to delete is the last token, the swap operation is unnecessary
-        if (ticketIndex != lastTicketIndex) {
-            uint256 lastTicketId = _ownedTickets[from][lastTicketIndex];
+        if (assetIndex != lastAssetIndex) {
+            uint256 lastAssetId = _ownedAssets[from][lastAssetIndex];
 
-            _ownedTickets[from][ticketIndex] = lastTicketId; // Move the last token to the slot of the to-delete token
-            _ownedTicketsIndex[lastTicketId] = ticketIndex; // Update the moved token's index
+            _ownedAssets[from][assetIndex] = lastAssetId; // Move the last token to the slot of the to-delete token
+            _ownedAssetsIndex[lastAssetId] = assetIndex; // Update the moved token's index
         }
 
         // This also deletes the contents at the last position of the array
-        delete _ownedTicketsIndex[ticketId];
-        delete _ownedTickets[from][lastTicketIndex];
+        delete _ownedAssetsIndex[assetId];
+        delete _ownedAssets[from][lastAssetIndex];
     }
 
     /**
@@ -271,11 +274,11 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     }
 
     /**
-    * @dev Returns the Uniform Resource Identifier (URI) for `tokenId` token.
+    * @dev Returns the Uniform Resource Identifier (URI) for `assetId` token.
      */
-    function tokenURI(uint256 tokenId) external view returns (string memory) {
+    function tokenURI(uint256 assetId) external view returns (string memory) {
         if (direct) {
-            return string(abi.encodePacked(_tokenURI, "/", tokenId));
+            return string(abi.encodePacked(_tokenURI, "/", assetId));
         }
         return _tokenURI;
     }
@@ -287,18 +290,18 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         return interfaceId == type(IERC721).interfaceId || interfaceId == type(IERC721Metadata).interfaceId;
     }
 
-    function approve(address to, uint256 tokenId) external {}
+    function approve(address to, uint256 assetId) external {}
 
-    function getApproved(uint256 tokenId) external view returns (address operator) {}
+    function getApproved(uint256 assetId) external view returns (address operator) {}
 
     function isApprovedForAll(address owner, address operator) external view returns (bool) {}
 
-    function safeTransferFrom(address from, address to, uint256 tokenId) external {}
+    function safeTransferFrom(address from, address to, uint256 assetId) external {}
 
-    function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external {}
+    function safeTransferFrom(address from, address to, uint256 assetId, bytes calldata data) external {}
 
     function setApprovalForAll(address operator, bool approved) external {}
 
-    function transferFrom(address from, address to, uint256 tokenId) external {}
+    function transferFrom(address from, address to, uint256 assetId) external {}
 
 }
