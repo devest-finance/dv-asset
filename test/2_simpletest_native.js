@@ -5,11 +5,16 @@ describe("DvAsset Native", function () {
     let dvAssetFactory, dvAsset, accounts, dvAssetAddress;
     const priceValue = ethers.utils.parseUnits("5", "wei");
 
+    const fee = ethers.utils.parseUnits("0.01", "ether");
+    const issueFee = ethers.utils.parseUnits("1", "ether");
+
     before(async function () {
         accounts = await ethers.getSigners();
         const DvAssetFactory = await ethers.getContractFactory("DvAssetFactory");
         dvAssetFactory = await DvAssetFactory.deploy();
         await dvAssetFactory.deployed();
+        // await dvAssetFactory.setFee(fee, issueFee);
+        // await dvAssetFactory.setRecipient(accounts[0].address);
 
         // Assuming issue emits an event with the new dvAsset address as the first argument
         const issueTx = await dvAssetFactory.issue("0x0000000000000000000000000000000000000000", "https://something", "DvAsset", "DVA", { value: priceValue });
@@ -17,10 +22,12 @@ describe("DvAsset Native", function () {
         dvAssetAddress = issueTxReceipt.events?.filter((x) => x.event === "deployed")[0].args[1];
 
         dvAsset = await ethers.getContractAt("DvAsset", dvAssetAddress);
-        await dvAsset.initialize(0, 6, 5, true);
+        await dvAsset.initialize(0, 6, 5, true, false);
     });
 
     it("purchase tickets", async function () {
+        console.log("accounts 1 balance");
+        console.log(await dvAsset.balanceOf(accounts[1].address));
         const tx = await dvAsset.connect(accounts[1]).purchase(5, { value: priceValue });
         await tx.wait();
 
@@ -28,15 +35,15 @@ describe("DvAsset Native", function () {
         assert.strictEqual(ownerOfNumber5, accounts[1].address, "Account 1 should own ticket number 5");
     });
 
-    // it("Ticket fee was collected and transferred to owner", async function () {
-    //     const ownerAddress = accounts[0].address;
-    //     const initialBalance = await ethers.provider.getBalance(ownerAddress);
-    //     // simulate purchase to change the balance here...
-    //     const finalBalance = await ethers.provider.getBalance(ownerAddress);
-    //     const priceValueBigNumber = ethers.utils.parseUnits("5", "wei");
-    //     const expectedFinalBalance = initialBalance.add(priceValueBigNumber);
-    //     assert.strictEqual(finalBalance.toString(), expectedFinalBalance.toString(), "Final balance does not match expected value.");
-    // });
+    it("Ticket fee was collected and transferred to owner", async function () {
+        const ownerAddress = accounts[0].address;
+        const initialBalance = await ethers.provider.getBalance(ownerAddress);
+        // simulate purchase to change the balance here...
+        const finalBalance = await ethers.provider.getBalance(ownerAddress);
+        const priceValueBigNumber = ethers.utils.parseUnits("5", "wei");
+        const expectedFinalBalance = initialBalance.add(priceValueBigNumber);
+        assert.strictEqual(finalBalance.toString(), expectedFinalBalance.toString(), "Final balance does not match expected value.");
+    });
 
     it("Buy all other tickets to close presale", async function () {
         const signer1 = accounts[1];

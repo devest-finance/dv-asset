@@ -7,3 +7,4 @@ build
 .states
 artifacts
 cache
+npm

@@ -1,13 +1,14 @@
 {
-  "name": "dv-asset",
-  "version": "1.0.0",
+  "name": "@devest/dv-asset",
+  "version": "1.0.5",
   "description": "",
-  "main": "truffle-config.js",
+  "main": "contracts/DvAsset.sol",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "truffle test --debug"
+    "test": "npx hardhat test",
+    "build": "mkdir -p npm; cp -r ./contracts/* ./npm; cp package.json ./npm/package.json; cp readme.md ./npm/readme.md"
   },
   "repository": {
     "type": "git",
