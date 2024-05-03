@@ -43,7 +43,7 @@ contract DvMedia is DvAsset {
     /**
   *  Initialize TST as tangible
   */
-    function initialize(uint tax, uint256 _totalSupply, uint256 _price, uint256 _decimals) public onlyOwner nonReentrant {
+    function initialize(uint tax, uint256 _totalSupply, uint256 _price) public onlyOwner nonReentrant {
         require(tax >= 0 && tax <= 1000, 'Invalid tax value');
         require(totalSupply >= 0 && totalSupply <= 10000, 'Max 10 decimals');
 
@@ -51,10 +51,11 @@ contract DvMedia is DvAsset {
         price = _price;
         preSale = true;
         tradable = true;
-
+    
         // set attributes
         _setRoyalties(tax, owner());
 
+        uint8 _decimals = 2;
         // stakes
         // assign to publisher all shares
         shares[_msgSender()] = (10 ** (_decimals + 2));
@@ -65,6 +66,9 @@ contract DvMedia is DvAsset {
         shareholders.push(_msgSender());
         shareholdersIndex[_msgSender()] = 0;
         shareholdersLevel[_msgSender()] = 0;
+
+        // set royalties for owner
+        setRoyalties(tax, _msgSender());
     }
 
     function setLicence(uint256 percentage, address owner, uint right) public onlyOwner {
