@@ -3,6 +3,7 @@ pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/utils/Context.sol";
 import "./DvAsset.sol";
+import "./DvMedia.sol";
 
 contract DvAssetFactory is Context {
 
@@ -31,7 +32,7 @@ contract DvAssetFactory is Context {
      * @dev detach a token from this factory
      */
     function detach(address payable _tokenAddress) external payable onlyOwner {
-        DvAsset token = DvAsset(_tokenAddress);
+        DvMedia token = DvMedia(_tokenAddress);
         token.detach();
     }
 
@@ -43,7 +44,7 @@ contract DvAssetFactory is Context {
             payable(_feeRecipient).transfer(_issueFee);
 
         // issue token
-        DvAsset ticket = new DvAsset(tradingTokenAddress, name, symbol, tokenURI, address(this), _msgSender());
+        DvMedia ticket = new DvMedia(tradingTokenAddress, name, symbol, tokenURI, address(this), _msgSender());
 
         emit deployed(_msgSender(), address(ticket));
         return address(ticket);
