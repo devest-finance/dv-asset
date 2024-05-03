@@ -8,21 +8,32 @@ import {DvAsset} from "./DvAsset.sol";
  * @notice This contract manages the lifecycle of digital assets for a tangible good.
  *         It leverages the DeVest and VestingToken contracts from the DeVest library.
  */
-contract DvAsset is DvAsset {
+contract DvMedia is DvAsset {
+
+    uint decimals;
 
     // When payment was received
     event payed(address indexed from, uint256 amount);
     event disbursed(uint256 amount);
 
+    // When new licence holder is added
+    event licenced(address indexed owner, uint256 percentage, uint right);
+
     // Stakes
     mapping (address => uint256) internal shareholdersLevel;        // level of disburse the shareholder withdraw
     mapping (address => uint256) internal shareholdersIndex;        // index of the shareholders address
 
+    address[] internal shareholders;                                // all current shareholders
+    mapping (address => uint256) internal shares;                   // shares of shareholder
+
     uint256[] public disburseLevels;    // Amount disburse in each level
     uint256 internal totalDisbursed;    // Total amount disbursed (not available anymore)
 
+    // Rights
+    mapping (address => uint) internal rights;
+
     constructor(address _tokenAddress, string memory __name, string memory __symbol, string memory __tokenURI, address _factory, address _owner)
-    DvAsset(_tokenAddress, __name, __symbol, __tokenURI,  _factory, _owner) VestingToken(_tokenAddress) {
+    DvAsset(_tokenAddress, __name, __symbol, __tokenURI,  _factory, _owner) {
 
         _name = __name;
         _symbol = __symbol;
@@ -32,7 +43,7 @@ contract DvAsset is DvAsset {
     /**
   *  Initialize TST as tangible
   */
-    function initialize(uint tax, uint256 _totalSupply, uint256 _price, uint256 _decimals) public override onlyOwner nonReentrant {
+    function initialize(uint tax, uint256 _totalSupply, uint256 _price, uint256 _decimals) public onlyOwner nonReentrant {
         require(tax >= 0 && tax <= 1000, 'Invalid tax value');
         require(totalSupply >= 0 && totalSupply <= 10000, 'Max 10 decimals');
 
@@ -48,65 +59,66 @@ contract DvAsset is DvAsset {
         // assign to publisher all shares
         shares[_msgSender()] = (10 ** (_decimals + 2));
 
+        decimals = _decimals;
+
         // Initialize owner as only shareholder
         shareholders.push(_msgSender());
         shareholdersIndex[_msgSender()] = 0;
         shareholdersLevel[_msgSender()] = 0;
     }
 
-    function setLicence(uint256 percentage, address owner) public override onlyOwner {
+    function setLicence(uint256 percentage, address owner, uint right) public onlyOwner {
         require(percentage >= 0 && percentage <= 1000, 'Invalid amount of shares');
         require(owner != address(0), 'Invalid owner address');
-        require(getShares(_msgSender()) >= amount, "Insufficient shares");
+        require(getShares(_msgSender()) >= percentage, "Insufficient shares");
         require(_msgSender() != owner, "Can't transfer to yourself");
 
         // if shareholder has no shares add him as new
-        if (shares[to] == 0) {
+        if (shares[owner] == 0) {
             shareholdersIndex[owner] = shareholders.length;
             shareholdersLevel[owner] = shareholdersLevel[_msgSender()];
             shareholders.push(owner);
+            rights[owner] = right;
         }
 
-        require(shareholdersLevel[owner] == shareholdersLevel[from], "Can't swap shares of uneven levels");
-        shares[owner] += amount;
-        shares[_msgSender()] -= amount;
+        require(shareholdersLevel[owner] == shareholdersLevel[owner], "Can't swap shares of uneven levels");
+        shares[owner] += percentage;
+        shares[_msgSender()] -= percentage;
 
         // remove shareholder without shares
-        if (shares[from] == 0){
+        if (shares[owner] == 0){
             shareholders[shareholdersIndex[_msgSender()]] = shareholders[shareholders.length-1];
             shareholdersIndex[shareholders[shareholders.length-1]] = shareholdersIndex[_msgSender()];
             shareholders.pop();
         }
+        emit licenced(owner, percentage, right);
     }
 
     // TODO how often can this be called ??
     // Mark the current available value as disbursed
     // so shareholders can withdraw
-    function disburse() public atState(States.Trading) nonReentrant {
+    function disburse() external nonReentrant {
         uint256 balance = __balanceOf(address(this));
 
         // check if there is balance to disburse
-        if (balance > escrow){
-            balance -= escrow;
-            balance -= totalDisbursed;
+        balance -= totalDisbursed;
 
-            // Check if balance is 0, if so, nothing to disburse
-            if (balance <= 0)
-                return;
+        // Check if balance is 0, if so, nothing to disburse
+        if (balance <= 0)
+            return;
 
-            disburseLevels.push(balance);
-            totalDisbursed += balance;
-        }
+        disburseLevels.push(balance);
+        totalDisbursed += balance;
 
         emit disbursed(balance);
     }
 
-    function withdraw() public payable override nonReentrant {
+    function withdraw() public payable nonReentrant {
         require(shares[_msgSender()] > 0, 'No shares available');
         require(shareholdersLevel[_msgSender()]<disburseLevels.length, "Nothing to disburse");
 
         // calculate and transfer claiming amount
-        uint256 amount = (shares[_msgSender()] * disburseLevels[shareholdersLevel[_msgSender()]] / _totalSupply);
+        uint256 amount = (shares[_msgSender()] * disburseLevels[shareholdersLevel[_msgSender()]] / (10 ** (decimals + 2)));
         __transfer(_msgSender(), amount);
 
         // remove reserved amount
@@ -120,11 +132,11 @@ contract DvAsset is DvAsset {
     // royalties are not split because the owners are the only shareholder
     function _payment(address sender, address recipient, uint256 price) internal override {
         __transferFrom(sender, recipient, price);
-        emit payed(_msgSender(), amount);
+        emit payed(_msgSender(), price);
     }
 
     // in case of trade
-    function _exchange(address buyer, address seller, uint256 price) internal virtual {
+    function _exchange(address buyer, address seller, uint256 price) internal override virtual {
         // first transfer all to the contract
         __transferFrom(buyer, address(this), price);
 
@@ -136,6 +148,10 @@ contract DvAsset is DvAsset {
     }
 
     // Function to receive Ether only allowed when contract Native Token
-    receive() override external payable {}
+    receive() external payable {}
 
+    // Get shares of one investor
+    function getShares(address _owner) public view returns (uint256) {
+            return shares[_owner];
+    }
 }

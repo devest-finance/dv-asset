@@ -180,12 +180,12 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         emit purchased(_msgSender(), assetId);
     }
 
-    function _exchange(address buyer, address seller, uint256 price) internal virtual {
-        __transferFrom(buyer, seller, price);
+    function _exchange(address buyer, address seller, uint256 _price) internal virtual {
+        __transferFrom(buyer, seller, _price);
     }
 
-    function _payment(address sender, address recipient, uint256 price) internal virtual {
-        __transferFrom(sender, recipient, price);
+    function _payment(address sender, address recipient, uint256 _price) internal virtual {
+        __transferFrom(sender, recipient, _price);
     }
 
     /**
