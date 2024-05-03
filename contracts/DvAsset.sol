@@ -10,7 +10,7 @@ import "@devest/contracts/DeVest.sol";
 import "@devest/contracts/VestingToken.sol";
 /**
  * @title DvAsset Contract
- * @author [Don Miguel] (DeVest 2025)
+ * @author DeVest 2025
  * @notice This contract manages the lifecycle of digital assets for a tangible good.
  *         It leverages the DeVest and VestingToken contracts from the DeVest library.
  */
@@ -146,7 +146,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     }
 
     // Purchase asset
-    function purchase(uint256 assetId) external payable takeFee {
+    function purchase(uint256 assetId) external payable takeFee virtual{
         require(direct == false, "Direct purchase is enabled");
         require(assetId < totalSupply, "Asset sold out");
         require(_msgSender() != ownerOf(assetId), "You already own this asset");
@@ -155,7 +155,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         // check if its original asset or asset offered for sale
         if (_market[assetId].owner != address(0)) {
             __allowance(_msgSender(), _market[assetId].price);
-            __transferFrom(_msgSender(), _market[assetId].owner, _market[assetId].price);
+            _exchange(_msgSender(), _market[assetId].owner, _market[assetId].price);
 
             // remove asset from seller
             removeFromOwnedTokens(_market[assetId].owner, assetId);
@@ -166,7 +166,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         } else {
             require(address(0) == ownerOf(assetId), "Asset not available");
             __allowance(_msgSender(), price);
-            __transferFrom(_msgSender(), owner(), price);
+            _payment(_msgSender(), owner(), price);
             // assigned asset to buyer
             totalPurchased++;
             // cancel preSale if all assets are sold
@@ -178,6 +178,14 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         _balances[_msgSender()] += 1;
 
         emit purchased(_msgSender(), assetId);
+    }
+
+    function _exchange(address buyer, address seller, uint256 price) internal virtual {
+        __transferFrom(buyer, seller, price);
+    }
+
+    function _payment(address sender, address recipient, uint256 price) internal virtual {
+        __transferFrom(sender, recipient, price);
     }
 
     /**
