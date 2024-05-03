@@ -21,6 +21,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     event transferred(address indexed sender, address indexed reciver, uint256 indexed assetId);
     event offered(address indexed owner, uint256 indexed assetId, uint256 price);
     event canceled(address indexed owner, uint256 indexed assetId);
+    event issued(address indexed sender, uint256 price, uint256 assetId, string referenceId);
 
     // ---
     uint256 public price;                   // current price of asset (smallest offered)
@@ -141,7 +142,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         _balances[_msgSender()] += 1;
         ownerByExternalReferenceId[referenceId] = _msgSender();
 
-        emit purchased(_msgSender(), totalPurchased);
+        emit issued(_msgSender(), _price, totalPurchased, referenceId);
     }
 
     // Purchase asset
