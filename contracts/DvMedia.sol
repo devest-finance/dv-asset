@@ -43,6 +43,10 @@ contract DvMedia is DvAsset {
     /**
   *  Initialize TST as tangible
   */
+    function init(uint tax, uint256 _totalSupply, uint256 _price) public {
+        initialize(tax, _totalSupply, _price);
+    }
+
     function initialize(uint tax, uint256 _totalSupply, uint256 _price) public onlyOwner nonReentrant {
         require(tax >= 0 && tax <= 1000, 'Invalid tax value');
         require(totalSupply >= 0 && totalSupply <= 10000, 'Max 10 decimals');
@@ -66,16 +70,12 @@ contract DvMedia is DvAsset {
         shareholders.push(_msgSender());
         shareholdersIndex[_msgSender()] = 0;
         shareholdersLevel[_msgSender()] = 0;
-
-        // set royalties for owner
-        setRoyalties(tax, _msgSender());
     }
 
-    function setLicence(uint256 percentage, address owner, uint right) public onlyOwner {
+    function setLicence(uint256 percentage, address owner, uint right) public payable onlyOwner {
         require(percentage >= 0 && percentage <= 1000, 'Invalid amount of shares');
         require(owner != address(0), 'Invalid owner address');
         require(getShares(_msgSender()) >= percentage, "Insufficient shares");
-        require(_msgSender() != owner, "Can't transfer to yourself");
 
         // if shareholder has no shares add him as new
         if (shares[owner] == 0) {
@@ -95,6 +95,7 @@ contract DvMedia is DvAsset {
             shareholdersIndex[shareholders[shareholders.length-1]] = shareholdersIndex[_msgSender()];
             shareholders.pop();
         }
+        
         emit licenced(owner, percentage, right);
     }
 
@@ -151,11 +152,20 @@ contract DvMedia is DvAsset {
         emit payed(_msgSender(), royalty);
     }
 
-    // Function to receive Ether only allowed when contract Native Token
-    receive() external payable {}
+    // Get shareholder addresses
+    function getShareholders() public view returns (address[] memory) {
+        return shareholders;
+    }
 
     // Get shares of one investor
     function getShares(address _owner) public view returns (uint256) {
             return shares[_owner];
     }
+
+    function getRights(address _owner) public view returns (uint) {
+        return rights[_owner];
+    }
+
+    // Function to receive Ether only allowed when contract Native Token
+    receive() external payable {}
 }
