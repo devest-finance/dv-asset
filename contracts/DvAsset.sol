@@ -131,6 +131,9 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         require(tradable == false, "Trading is enabled");
         require(_msgSender() != ownerOf(totalPurchased + 1), "You already own this asset");
 
+        (fee, recipient) = _factory.getFee();
+        _price += fee;
+
         __allowance(_msgSender(), _price);
         __transferFrom(_msgSender(), owner(), _price);
 
@@ -152,10 +155,12 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         require(_msgSender() != ownerOf(assetId), "You already own this asset");
         require(isForSale(assetId), "Asset not for sale");
 
+        (fee, recipient) = _factory.getFee();
+
         // check if its original asset or asset offered for sale
         if (_market[assetId].owner != address(0)) {
-            __allowance(_msgSender(), _market[assetId].price);
-            _exchange(_msgSender(), _market[assetId].owner, _market[assetId].price);
+            __allowance(_msgSender(), _market[assetId].price + fee);
+            _exchange(_msgSender(), _market[assetId].owner, _market[assetId].price + fee);
 
             // remove asset from seller
             removeFromOwnedTokens(_market[assetId].owner, assetId);
@@ -165,8 +170,8 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
             _market[assetId] = Offer(address(0), 0);
         } else {
             require(address(0) == ownerOf(assetId), "Asset not available");
-            __allowance(_msgSender(), price);
-            _payment(_msgSender(), owner(), price);
+            __allowance(_msgSender(), price + fee);
+            _payment(_msgSender(), owner(), price + fee);
             // assigned asset to buyer
             totalPurchased++;
             // cancel preSale if all assets are sold
@@ -181,10 +186,16 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     }
 
     function _exchange(address buyer, address seller, uint256 _price) internal virtual {
+        (fee, recipient) = _factory.getFee();
+        _price += fee;
+
         __transferFrom(buyer, seller, _price);
     }
 
     function _payment(address sender, address recipient, uint256 _price) internal virtual {
+        (fee, recipient) = _factory.getFee();
+        _price += fee;
+
         __transferFrom(sender, recipient, _price);
     }
 
