@@ -131,7 +131,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         require(tradable == false, "Trading is enabled");
         require(_msgSender() != ownerOf(totalPurchased + 1), "You already own this asset");
 
-        (fee, recipient) = _factory.getFee();
+        (uint256 fee, ) = _factory.getFee();
         _price += fee;
 
         __allowance(_msgSender(), _price);
@@ -155,7 +155,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         require(_msgSender() != ownerOf(assetId), "You already own this asset");
         require(isForSale(assetId), "Asset not for sale");
 
-        (fee, recipient) = _factory.getFee();
+        (uint256 fee, ) = _factory.getFee();
 
         // check if its original asset or asset offered for sale
         if (_market[assetId].owner != address(0)) {
@@ -186,14 +186,14 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     }
 
     function _exchange(address buyer, address seller, uint256 _price) internal virtual {
-        (fee, recipient) = _factory.getFee();
+        (uint256 fee, ) = _factory.getFee();
         _price += fee;
 
         __transferFrom(buyer, seller, _price);
     }
 
     function _payment(address sender, address recipient, uint256 _price) internal virtual {
-        (fee, recipient) = _factory.getFee();
+        (uint256 fee, ) = _factory.getFee();
         _price += fee;
 
         __transferFrom(sender, recipient, _price);
