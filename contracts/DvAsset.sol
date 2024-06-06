@@ -75,7 +75,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
      */
     function initialize(uint tax, uint256 _totalSupply, uint256 _price, bool _tradable, bool _direct) public onlyOwner nonReentrant virtual {
         require(tax >= 0 && tax <= 1000, 'Invalid tax value');
-        require(totalSupply >= 0 && totalSupply <= 10000, 'Max 10 decimals');
+        require(_totalSupply >= 0 && _totalSupply <= 10000, 'Max 10 decimals');
 
         totalSupply = _totalSupply;
         price = _price;
