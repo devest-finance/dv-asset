@@ -129,7 +129,6 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
         require(direct == true, "Direct purchase is disabled");
         require(preSale == false, "Presale is active");
         require(tradable == false, "Trading is enabled");
-        require(_msgSender() != ownerOf(totalPurchased + 1), "You already own this asset");
 
         __allowance(_msgSender(), _price);
         __transferFrom(_msgSender(), owner(), _price);
