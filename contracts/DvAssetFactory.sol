@@ -35,7 +35,7 @@ contract DvAssetFactory is Context {
         token.detach();
     }
 
-    function issue(address tradingTokenAddress, string memory tokenURI, string memory name, string memory symbol) public payable isActive returns (address)
+    function issue(address tradingTokenAddress, string memory tokenURI, string memory name, string memory symbol) public payable isActive virtual returns (address)
     {
         // take royalty
         require(msg.value >= _issueFee, "Please provide enough fee");
