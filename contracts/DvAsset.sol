@@ -14,7 +14,7 @@ import "@devest/contracts/VestingToken.sol";
  * @notice This contract manages the lifecycle of digital assets for a tangible good.
  *         It leverages the DeVest and VestingToken contracts from the DeVest library.
  */
-contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IERC721Metadata {
+contract DvAsset is Context, ReentrancyGuard, IERC721, IERC721Metadata, VestingToken, DeVest {
 
     // Events emitted by the contract
     event purchased(address indexed customer, uint256 indexed assetId);
@@ -34,19 +34,19 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     bool public direct = false;             // while direct is active, assets can be purchased directly at a set price, deactivates presale
 
     // Mapping of asset IDs to owner addresses
-    mapping(uint256 => address) private _assets;
+    mapping(uint256 => address) internal _assets;
 
     // Mapping of owner addresses to token count
-    mapping(address => uint256) private _balances;
+    mapping(address => uint256) internal _balances;
 
     // Mapping from owner to list of owned token IDs for enumeration
-    mapping(address => mapping(uint256 => uint256)) private _ownedAssets;
+    mapping(address => mapping(uint256 => uint256)) internal _ownedAssets;
 
     // Mapping from token ID to index in the owner's list of tokens
-    mapping(uint256 => uint256) private _ownedAssetsIndex;
+    mapping(uint256 => uint256) internal _ownedAssetsIndex;
 
     // Mapping from referenceId to owner
-    mapping(string => address) private ownerByExternalReferenceId;
+    mapping(string => address) internal ownerByExternalReferenceId;
 
     // for trading
     struct Offer {
@@ -125,23 +125,7 @@ contract DvAsset is Context, DeVest, ReentrancyGuard, VestingToken, IERC721, IER
     /**
      *  Purchase and mint asset directly
      */
-    function issue(string memory referenceId, uint256 _price) external payable takeFee {
-        require(direct == true, "Direct purchase is disabled");
-        require(preSale == false, "Presale is active");
-        require(tradable == false, "Trading is enabled");
-
-        __allowance(_msgSender(), _price);
-        __transferFrom(_msgSender(), owner(), _price);
-
-        // assigned asset to buyer
-        totalPurchased++;
-        addToOwnedAssets(_msgSender(), totalPurchased);
-
-        _assets[totalPurchased] = _msgSender();
-        _balances[_msgSender()] += 1;
-        ownerByExternalReferenceId[referenceId] = _msgSender();
-
-        emit issued(_msgSender(), _price, totalPurchased, referenceId);
+    function issue(string memory referenceId, uint256 _price) virtual internal {
     }
 
     // Purchase asset
