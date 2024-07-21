@@ -29,6 +29,7 @@ contract DvAsset is Context, ReentrancyGuard, IERC721, IERC721Metadata, VestingT
     uint256 public totalPurchased = 0;      // total assets purchased
 
     // --- State
+    bool internal initialized = false;        // Initialize can only be called once
     bool public preSale = true;             // while presale is active, assets cannot be offered for sale
     bool public tradable = false;           // while tradable is active, assets can be traded
     bool public direct = false;             // while direct is active, assets can be purchased directly at a set price, deactivates presale
@@ -73,7 +74,8 @@ contract DvAsset is Context, ReentrancyGuard, IERC721, IERC721Metadata, VestingT
     /**
      *  Initialize TST as tangible
      */
-    function initialize(uint tax, uint256 _totalSupply, uint256 _price, bool _tradable, bool _direct) public onlyOwner nonReentrant virtual {
+    function initialize(uint tax, uint256 _totalSupply, uint256 _price, bool _tradable, bool _direct) public onlyOwner virtual {
+        require(!initialized, 'Contract was already initialized');
         require(tax >= 0 && tax <= 1000, 'Invalid tax value');
         require(_totalSupply >= 0 && _totalSupply <= 10000, 'Max 10 decimals');
 
@@ -85,6 +87,8 @@ contract DvAsset is Context, ReentrancyGuard, IERC721, IERC721Metadata, VestingT
 
         // set attributes
         _setRoyalties(tax, owner());
+
+        initialized = true;
     }
 
     /** --------------------------------------------------------------------------------------------------- */
@@ -125,11 +129,10 @@ contract DvAsset is Context, ReentrancyGuard, IERC721, IERC721Metadata, VestingT
     /**
      *  Purchase and mint asset directly
      */
-    function issue(string memory referenceId, uint256 _price) virtual internal {
-    }
+    function issue(string memory referenceId, uint256 _price) virtual onlyOwner internal {}
 
     // Purchase asset
-    function purchase(uint256 assetId) external payable takeFee virtual{
+    function purchase(uint256 assetId) external payable takeFee nonReentrant virtual{
         (uint256 fee, ) = _factory.getFee();
 
         require(direct == false, "Direct purchase is enabled");
@@ -138,19 +141,7 @@ contract DvAsset is Context, ReentrancyGuard, IERC721, IERC721Metadata, VestingT
         require(isForSale(assetId), "Asset not for sale");
         require(msg.value >= price + fee, "Not enough value provided");
 
-        // check if its original asset or asset offered for sale
-        if (_market[assetId].owner != address(0)) {
-            __allowance(_msgSender(), _market[assetId].price);
-            _exchange(_msgSender(), _market[assetId].owner, _market[assetId].price);
-
-            // remove asset from seller
-            removeFromOwnedTokens(_market[assetId].owner, assetId);
-            _balances[_market[assetId].owner] -= 1;
-
-            // reset asset offer
-            _market[assetId] = Offer(address(0), 0);
-        } else {
-            require(address(0) == ownerOf(assetId), "Asset not available");
+        if (ownerOf(assetId) == address(0)){
             __allowance(_msgSender(), price);
             _payment(_msgSender(), owner(), price);
             // assigned asset to buyer
@@ -158,7 +149,18 @@ contract DvAsset is Context, ReentrancyGuard, IERC721, IERC721Metadata, VestingT
             // cancel preSale if all assets are sold
             if (totalPurchased == totalSupply)
                 preSale = false;
+        } else {
+            __allowance(_msgSender(), _market[assetId].price);
+            _exchange(_msgSender(), _market[assetId].owner, _market[assetId].price);
+            // remove asset from seller
+            removeFromOwnedTokens(_market[assetId].owner, assetId);
+            _balances[_market[assetId].owner] -= 1;
+            // reset asset offer
+            _market[assetId] = Offer(address(0), 0);
         }
+        // check if its original asset or asset offered for sale
+        // if (_market[assetId].owner != address(0)) {
+
         addToOwnedAssets(_msgSender(), assetId);
         _assets[assetId] = _msgSender();
         _balances[_msgSender()] += 1;
